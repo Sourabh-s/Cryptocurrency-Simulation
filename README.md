@@ -1,2 +1,2 @@
 # JetBrains-Academy-Blockchain
-Source code from JetBrains Academy's Blockchain Project
+Source code for JetBrains Academy's Blockchain Project
