@@ -3,7 +3,7 @@ package blockchain;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
-public class StringUtil {
+public class StringUtils {
 
     public static String applySha256(String input) {
         try {
