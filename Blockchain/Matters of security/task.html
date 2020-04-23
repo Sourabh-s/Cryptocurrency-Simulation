@@ -8,7 +8,7 @@ Asymmetric cryptography solves this problem. With this, you can sign the message
 
 <p> </p>
 
-<p>Please take a look at <a href="http://www.mkyong.com/java/java-digital-signatures-example/" rel="nofollow noopener noreferrer">http://www.mkyong.com/java/java-digital-signatures-example/</a> for code examples for creating private and public keys and signing and verifying the message.</p>
+<p>Please take a look at <a target="_blank" href="http://www.mkyong.com/java/java-digital-signatures-example/" rel="nofollow noopener noreferrer">http://www.mkyong.com/java/java-digital-signatures-example/</a> for code examples for creating private and public keys and signing and verifying the message.</p>
 
 <p><br>
 Now there is another problem. A hacker can't just take any message and sign it like it is your message, but he can take an already signed message and paste it into the blockchain again; the signature of this message stays the same, doesn’t it? For this reason, all messages should contain a unique identifier, and all these identifiers should be in ascending order in the blockchain.</p>
@@ -21,7 +21,7 @@ Now there is another problem. A hacker can't just take any message and sign it l
 
 <p>Output is the same as in the previous stage, but with the exception that no one can impersonate you and create a message using your name. To be tested successfully, program should output information about first five blocks of the blockchain. Blocks should be separated by an empty line.</p>
 
-<pre><code>Block:
+<pre><code class="java">Block:
 Created by miner # 9
 Id: 1
 Timestamp: 1539866031047

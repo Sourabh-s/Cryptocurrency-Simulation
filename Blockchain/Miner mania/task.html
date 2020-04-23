@@ -8,13 +8,13 @@
   <br>
   In this stage, you should create a lot of threads with miners, and every one of them should contain the same blockchain. The miners should mine new blocks and the blockchain should regulate the number N. The blockchain should check the validity of the incoming block (ensure that the previous hash equals the hash of the last block of the blockchain and the hash of this new block starts with N zeros). At the start, the number N equals 0 and should be increased by 1 / decreased by 1 / stays the same after the creation of the new block based on the time of its creation.</p>
 
-<p>[ALERT-warning]Do not exit main method until you print 5 blocks! Output is checked right after exiting main method.[/ALERT]</p>
+<p><div class="alert alert-warning">Do not exit main method until you print 5 blocks! Output is checked right after exiting main method.</div></p>
 
 <h2><strong>Output example</strong></h2>
 
 <p>To be tested successfully, program should output information about first five blocks of the blockchain. Blocks should be separated by an empty line.</p>
 
-<pre><code>Block:
+<pre><code class="java">Block:
 Created by miner # 9
 Id: 1
 Timestamp: 1539866031047

@@ -5,9 +5,9 @@ files:
   visible: false
   text: |
     import blockchain.Main;
-    import org.hyperskill.hstest.v6.stage.BaseStageTest;
-    import org.hyperskill.hstest.v6.testcase.CheckResult;
-    import org.hyperskill.hstest.v6.testcase.TestCase;
+    import org.hyperskill.hstest.stage.StageTest;
+    import org.hyperskill.hstest.testcase.CheckResult;
+    import org.hyperskill.hstest.testcase.TestCase;
 
     import java.util.ArrayList;
     import java.util.List;
@@ -164,7 +164,7 @@ files:
     }
 
 
-    public class BlockchainTest extends BaseStageTest<Clue> {
+    public class BlockchainTest extends StageTest<Clue> {
         public BlockchainTest() {
             super(Main.class);
         }
@@ -195,7 +195,7 @@ files:
             } catch (BlockParseException ex) {
                 return new CheckResult(false, ex.getMessage());
             } catch (Exception ex) {
-                return CheckResult.FALSE;
+                return CheckResult.wrong("");
             }
 
             if (blocks.size() != 5) {
@@ -224,7 +224,7 @@ files:
             }
 
 
-            return CheckResult.TRUE;
+            return CheckResult.correct();
         }
     }
   learner_created: false
@@ -300,26 +300,161 @@ files:
         }
     }
   learner_created: false
-- name: src/blockchain/StringUtil.java
+- name: src/blockchain/Blockchain.java
   visible: true
   text: |-
     package blockchain;
 
+    import java.io.Serializable;
+    import java.util.ArrayList;
+
+    public class Blockchain implements Serializable {
+        private long id;
+        private String prevBlockHash;
+        private final ArrayList<Block> chain;
+        private String fileName = null;
+        private int noOfStartZerosForHash = 0;
+
+        private Blockchain(String fileName, int noOfStartZerosForHash) {
+            this.id = 1;
+            prevBlockHash = "0";
+            chain = new ArrayList<Block>();
+            this.fileName = fileName;
+            this.noOfStartZerosForHash = noOfStartZerosForHash;
+        }
+
+        public void addBlock() {
+            Block block = Block.generateBlock(id, prevBlockHash, noOfStartZerosForHash);
+            chain.add(block);
+            id++;
+            prevBlockHash = block.getHash();
+
+            try{
+                SerializationUtils.serialize(this, fileName);
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+
+        public static Blockchain generateBlockchain (String fileName, int noOfStartZerosForHash, Object caller) {
+            if(!(caller instanceof BlockchainDriver)) throw new IllegalCallerException();
+            return new Blockchain(fileName, noOfStartZerosForHash);
+        }
+
+        public boolean isValid() {
+            long id = 1;
+            String prevBlockHash = "0";
+            String expectedStarting = "0".repeat(Math.max(0, noOfStartZerosForHash));
+
+            for (Block block : chain) {
+                if (block.getId() != id) return false;
+                if (!block.getPrevBlockHash().equals(prevBlockHash)) return false;
+                if (!block.isConsistent()) return false;
+                String presentHash = block.getHash();
+                if (!presentHash.startsWith(expectedStarting)) return false;
+
+                id += 1;
+                prevBlockHash = presentHash;
+            }
+
+            return true;
+        }
+
+        public long getLength() { return chain.size(); }
+
+        public Block getBlock(int index) { return chain.get(index); }
+
+        public int getNoOfStartZerosForHash() { return noOfStartZerosForHash; }
+    }
+  learner_created: true
+- name: src/blockchain/BlockchainDriver.java
+  visible: true
+  text: |-
+    package blockchain;
+
+    public class BlockchainDriver {
+
+        public Blockchain getBlockchain(int noOfStartZerosForHash){
+            String fileName = "cache";
+            Blockchain blockchain = null;
+
+            try {
+                blockchain = (Blockchain) SerializationUtils.deserialize(fileName);
+            } catch(Exception ignored) {
+
+            } finally {
+                if(
+                           blockchain == null
+                        || blockchain.getNoOfStartZerosForHash() != noOfStartZerosForHash
+                        ||!blockchain.isValid()
+                ) {
+                    blockchain = Blockchain.generateBlockchain(fileName, noOfStartZerosForHash, this);
+                }
+            }
+
+            return blockchain;
+        }
+    }
+  learner_created: true
+- name: src/blockchain/miner/MinerFactory.java
+  visible: true
+  learner_created: true
+- name: src/blockchain/miner/Miner.java
+  visible: true
+  learner_created: true
+- name: src/blockchain/utils/SerializationUtils.java
+  visible: true
+  text: |
+    package blockchain;
+
+    import java.io.IOException;
+    import java.io.ObjectInputStream;
+    import java.io.ObjectOutputStream;
+    import java.io.FileInputStream;
+    import java.io.FileOutputStream;
+    import java.io.BufferedInputStream;
+    import java.io.BufferedOutputStream;
+
+    class SerializationUtils {
+        static void serialize(Object obj, String fileName) throws IOException {
+            FileOutputStream fos = new FileOutputStream(fileName);
+            BufferedOutputStream bos = new BufferedOutputStream(fos);
+            ObjectOutputStream oos = new ObjectOutputStream(bos);
+            oos.writeObject(obj);
+            oos.close();
+        }
+
+        static Object deserialize(String fileName) throws IOException, ClassNotFoundException {
+            FileInputStream fis = new FileInputStream(fileName);
+            BufferedInputStream bis = new BufferedInputStream(fis);
+            ObjectInputStream ois = new ObjectInputStream(bis);
+            Object obj = ois.readObject();
+            ois.close();
+            return obj;
+        }
+    }
+  learner_created: true
+- name: src/blockchain/utils/StringUtils.java
+  visible: true
+  text: |-
+    package blockchain;
+
+    import java.nio.charset.StandardCharsets;
     import java.security.MessageDigest;
 
-    public class StringUtil {
+    public class StringUtils {
 
-        public static String applySha256(String input){
+        public static String applySha256(String input) {
             try {
                 MessageDigest digest = MessageDigest.getInstance("SHA-256");
 
-                byte[] hash = digest.digest(input.getBytes("UTF-8"));
+                byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
 
                 StringBuilder hexString = new StringBuilder();
 
-                for (byte elem: hash) {
+                for (byte elem : hash) {
                     String hex = Integer.toHexString(0xff & elem);
-                    if(hex.length() == 1) hexString.append('0');
+                    if (hex.length() == 1) hexString.append('0');
                     hexString.append(hex);
                 }
 
@@ -331,34 +466,16 @@ files:
         }
 
     }
-  learner_created: false
-- name: src/blockchain/BlockChain.java
+  learner_created: true
+- name: blockchain.BlockchainDriver@32dafffc
   visible: true
-  text: |
-    package blockchain;
-
-    import java.util.ArrayList;
-
-    public class BlockChain {
-        private long id;
-        private String prevBlockHash;
-        private final ArrayList<Block> chain;
-
-        public BlockChain() {
-            this.id = 1;
-            prevBlockHash = "0";
-            chain = new ArrayList<Block>();
-        }
-
-        public Block createBlock() {
-            Block block = new Block(id, prevBlockHash);
-            chain.add(block);
-            id += 1;
-            prevBlockHash = block.getHash();
-            return block;
-        }
-    }
-  learner_created: false
+  learner_created: true
+- name: blockchain.BlockchainDriver@1ac950c1
+  visible: true
+  learner_created: true
+- name: blockchain.BlockchainDriver@280ee8c8
+  visible: true
+  learner_created: true
 feedback_link: https://hyperskill.org/projects/50/stages/273/implement
-status: Unchecked
-record: -1
+status: Solved
+record: 3
