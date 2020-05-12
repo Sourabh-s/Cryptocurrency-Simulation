@@ -305,65 +305,352 @@ files:
         }
     }
   learner_created: false
-- name: src/blockchain/StringUtil.java
+- name: src/blockchain/miner/MinerFactory.java
+  visible: true
+  text: |
+    package blockchain.miner;
+
+    import blockchain.*;
+
+    public class MinerFactory {
+        private long runningMinerId;
+        private Blockchain blockchain;
+
+        public MinerFactory(Blockchain blockchain) {
+            this.blockchain = blockchain;
+            runningMinerId = 1;
+        }
+
+        public Miner newMiner() {
+            return Miner.of(blockchain, runningMinerId++);
+        }
+    }
+  learner_created: true
+- name: src/blockchain/Blockchain.java
   visible: true
   text: |-
     package blockchain;
 
-    import java.security.MessageDigest;
+    import java.io.Serializable;
+    import java.util.ArrayList;
+    import java.util.Queue;
+    import java.util.concurrent.ConcurrentLinkedQueue;
+    import blockchain.miner.Miner;
 
-    public class StringUtil {
+    public class Blockchain implements Serializable {
+        private long runningBlockId;
+        private String runningPrevBlockHash;
+        private final ArrayList<Block> chain;
+        private final Queue<Block> unprocessedBlocks;
+        private BlockchainDriver creator;
 
-        public static String applySha256(String input){
+        private int noOfStartZerosForHash;
+        private String requiredPrefixForHash;
+
+        private static final int blockCreationFrequencyPerMinute = 3;
+        private static final int fixedMiningTimeMs = (int) ((60 * 1e3) / blockCreationFrequencyPerMinute);
+        /**
+         * 15% of deviation from fixed time is acceptable
+         */
+        private static final int acceptableDeviationInMiningTimeMs = (int) ((fixedMiningTimeMs * 15) / 100);
+
+        private Block currentMiningBlock;
+        private long currentMiningBlockStartTimeMs;
+        private long currentMiningBlockEndTimeMs;
+
+        private Blockchain() {
+            runningBlockId = 1;
+            runningPrevBlockHash = "0";
+            chain = new ArrayList<>();
+            unprocessedBlocks = new ConcurrentLinkedQueue<>();
+
+            noOfStartZerosForHash = 0;
+            requiredPrefixForHash = "";
+        }
+
+        public void addBlock() {
+            Block block = Block.with(runningBlockId);
+            if(runningPrevBlockHash != null) {
+                block.setPrevBlockHash(runningPrevBlockHash);
+                runningPrevBlockHash = null;
+            }
+
+            if(unprocessedBlocks.isEmpty()) {
+                currentMiningBlock = block;
+                currentMiningBlockStartTimeMs = System.currentTimeMillis();
+            }
+            unprocessedBlocks.add(block);
+            runningBlockId++;
+            creator.saveBlockchain();
+        }
+
+        public static Blockchain generateBlockchain(Object caller) {
+            if(!(caller instanceof BlockchainDriver)) throw new IllegalCallerException();
+            Blockchain blockchain = new Blockchain();
+            blockchain.creator = (BlockchainDriver) caller;
+            return blockchain;
+        }
+
+        public boolean isValid() {
+            long id = 1;
+            String prevBlockHash = "0";
+
+            for (Block block : chain) {
+                if (block.getId() != id) return false;
+                if (!block.getPrevBlockHash().equals(prevBlockHash)) return false;
+                if (!block.isConsistent()) return false;
+                String presentHash = block.getHash();
+
+                id += 1;
+                prevBlockHash = presentHash;
+            }
+
+            return true;
+        }
+
+        public synchronized boolean submitBlock(Block block, Object caller) {
+            if (!(caller instanceof Miner)) {
+                throw new IllegalCallerException();
+            }
+
+            currentMiningBlockEndTimeMs = System.currentTimeMillis();
+
+            if (!areSameBlocks(currentMiningBlock, block)) { return false; }
+            if (!block.getHash().startsWith(requiredPrefixForHash)) { return false; }
+            if (!block.isConsistent()) { return false; }
+
+            block.setTimeTookMs(currentMiningBlockEndTimeMs - block.getTimestamp());
+            block.setTimeTookForMiningMs(currentMiningBlockEndTimeMs - currentMiningBlockStartTimeMs);
+            chain.add(block);
+            unprocessedBlocks.poll();
+            updateMiningConstraints();
+
+            runningPrevBlockHash = block.getHash();
+
+            Block nextUnprocessedBlock = unprocessedBlocks.peek();
+            if (nextUnprocessedBlock != null) {
+                nextUnprocessedBlock.setPrevBlockHash(runningPrevBlockHash);
+                runningPrevBlockHash = null;
+            }
+            currentMiningBlock = nextUnprocessedBlock;
+
+            creator.saveBlockchain();
+            currentMiningBlockStartTimeMs = System.currentTimeMillis();
+            return true;
+        }
+
+        public Block getUnprocessedBlock() {
+            if(currentMiningBlock == null) return null;
+            return (Block) currentMiningBlock.clone();
+        }
+
+        public long getLength() { return chain.size(); }
+
+        public Block getBlock(int index) { return chain.get(index); }
+
+        public String getRequiredPrefixForHash() { return requiredPrefixForHash; }
+
+        public static int getBlockCreationFrequencyPerMinute() { return blockCreationFrequencyPerMinute; }
+
+        public static int getFixedMiningTimeMs() { return fixedMiningTimeMs; }
+
+        public static int getAcceptableDeviationInMiningTimeMs() { return acceptableDeviationInMiningTimeMs; }
+
+        private static boolean areSameBlocks(Block b1, Block b2) {
+            if (b1 == b2) { return true; }
+
+            if (b1.getClass() != b2.getClass()) { return false; }
+            if (b1.getId() != b2.getId()) { return false; }
+            if (b1.getTimestamp() != b2.getTimestamp()) { return false; }
+            if (!b1.getPrevBlockHash().equals(b2.getPrevBlockHash())) { return false; }
+
+            return true;
+        }
+
+        private void updateMiningConstraints() {
+            long timeTookForMining = currentMiningBlockEndTimeMs - currentMiningBlockStartTimeMs;
+
+            if (timeTookForMining >= (fixedMiningTimeMs - acceptableDeviationInMiningTimeMs)
+                && timeTookForMining <= (fixedMiningTimeMs + acceptableDeviationInMiningTimeMs)) {
+                return;
+            }
+
+            if(timeTookForMining < (fixedMiningTimeMs - acceptableDeviationInMiningTimeMs)) {
+                noOfStartZerosForHash++;
+                requiredPrefixForHash = requiredPrefixForHash.concat("0");
+                return;
+            }
+
+            noOfStartZerosForHash = Math.max(0, --noOfStartZerosForHash);
+            requiredPrefixForHash = "0".repeat(noOfStartZerosForHash);
+        }
+    }
+  learner_created: true
+- name: src/blockchain/BlockchainDriver.java
+  visible: true
+  text: |-
+    package blockchain;
+
+    import java.io.IOException;
+    import blockchain.utils.*;
+
+    public class BlockchainDriver {
+        String fileName;
+        Blockchain blockchain;
+
+        private BlockchainDriver() {
+            fileName = null;
+            blockchain = null;
+        }
+
+        public static BlockchainDriver newDriver() {
+            BlockchainDriver driver = new BlockchainDriver();
+            driver.fileName = driver.toString();
+            return driver;
+        }
+
+        public Blockchain getBlockchain() {
+            if (blockchain != null && blockchain.isValid()) { return blockchain; }
+
             try {
-                MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                blockchain = (Blockchain) SerializationUtils.deserialize(fileName);
+            } catch(Exception ignored) {
 
-                byte[] hash = digest.digest(input.getBytes("UTF-8"));
-
-                StringBuilder hexString = new StringBuilder();
-
-                for (byte elem: hash) {
-                    String hex = Integer.toHexString(0xff & elem);
-                    if(hex.length() == 1) hexString.append('0');
-                    hexString.append(hex);
+            } finally {
+                if (blockchain == null || !blockchain.isValid()) {
+                    blockchain = Blockchain.generateBlockchain(this);
                 }
+            }
 
-                return hexString.toString();
+            return blockchain;
+        }
 
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+        public boolean saveBlockchain() {
+            try {
+                SerializationUtils.serialize(blockchain, fileName);
+                return true;
+            } catch (IOException ignored) {
+                return false;
+            }
+        }
+    }
+  learner_created: true
+- name: src/blockchain/utils/SerializationUtils.java
+  visible: true
+  text: |
+    package blockchain.utils;
+
+    import java.io.IOException;
+    import java.io.ObjectInputStream;
+    import java.io.ObjectOutputStream;
+    import java.io.FileInputStream;
+    import java.io.FileOutputStream;
+    import java.io.BufferedInputStream;
+    import java.io.BufferedOutputStream;
+
+    public class SerializationUtils {
+        public static void serialize(Object obj, String fileName) throws IOException {
+            FileOutputStream fos = new FileOutputStream(fileName);
+            BufferedOutputStream bos = new BufferedOutputStream(fos);
+            ObjectOutputStream oos = new ObjectOutputStream(bos);
+            oos.writeObject(obj);
+            oos.close();
+        }
+
+        public static Object deserialize(String fileName) throws IOException, ClassNotFoundException {
+            FileInputStream fis = new FileInputStream(fileName);
+            BufferedInputStream bis = new BufferedInputStream(fis);
+            ObjectInputStream ois = new ObjectInputStream(bis);
+            Object obj = ois.readObject();
+            ois.close();
+            return obj;
+        }
+    }
+  learner_created: true
+- name: src/blockchain/miner/Miner.java
+  visible: true
+  text: |-
+    package blockchain.miner;
+
+    import java.util.Random;
+    import blockchain.*;
+    import blockchain.utils.*;
+
+    public class Miner implements Runnable {
+
+        private Blockchain blockchain;
+        private Block currentProcessingBlock;
+        private Random random;
+        private long id;
+        private static final int BLINDREPITITIONS = 100;
+        private static final int SLEEPWHENNOWORKMS = 1000;
+
+        private Miner(Blockchain blockchain, long id) {
+            this.blockchain = blockchain;
+            this.id = id;
+            currentProcessingBlock = null;
+            random = null;
+        }
+
+
+        static Miner of(Blockchain blockchain, long id) {
+            return new Miner(blockchain, id);
+        }
+
+        @Override
+        public void run() {
+            while (true) {
+                updateCurrentProcessingBlock();
+                if (currentProcessingBlock == null) {
+                    try {
+                        Thread.sleep(SLEEPWHENNOWORKMS);
+                    } catch (InterruptedException ignored) {
+                        return;
+                    }
+                    continue;
+                }
+                boolean successful = blindMining();
+                if (successful) {
+                    currentProcessingBlock.setMinerId(id);
+                    blockchain.submitBlock(currentProcessingBlock, this);
+                }
             }
         }
 
+        private boolean blindMining() {
+            String requiredPrefix = blockchain.getRequiredPrefixForHash();
+            for (int i = 0; i < BLINDREPITITIONS; i++) {
+                currentProcessingBlock.setMagicNum(random.nextInt());
+                String computedHash = StringUtils.applySha256(currentProcessingBlock.toString());
+                if (computedHash.startsWith(requiredPrefix)) {
+                    currentProcessingBlock.setHash(computedHash);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void updateCurrentProcessingBlock() {
+            Block block = blockchain.getUnprocessedBlock();
+            if (currentProcessingBlock == null || !currentProcessingBlock.equals(block)) {
+                currentProcessingBlock = block;
+                random = new Random();
+            }
+        }
     }
-  learner_created: false
-- name: src/blockchain/BlockChain.java
+  learner_created: true
+- name: blockchain.BlockchainDriver@1ac950c1
   visible: true
-  text: |
-    package blockchain;
-
-    import java.util.ArrayList;
-
-    public class BlockChain {
-        private long id;
-        private String prevBlockHash;
-        private final ArrayList<Block> chain;
-
-        public BlockChain() {
-            this.id = 1;
-            prevBlockHash = "0";
-            chain = new ArrayList<Block>();
-        }
-
-        public Block createBlock() {
-            Block block = new Block(id, prevBlockHash);
-            chain.add(block);
-            id += 1;
-            prevBlockHash = block.getHash();
-            return block;
-        }
-    }
-  learner_created: false
+  learner_created: true
+- name: src/blockchain/utils/StringUtils.java
+  visible: true
+  learner_created: true
+- name: src/blockchain/client/Client.java
+  visible: true
+  learner_created: true
+- name: src/blockchain/client/ClientFactory.java
+  visible: true
+  learner_created: true
 feedback_link: https://hyperskill.org/projects/50/stages/274/implement
-status: Unchecked
-record: -1
+status: Failed
+record: 4

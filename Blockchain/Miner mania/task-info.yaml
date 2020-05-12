@@ -467,13 +467,7 @@ files:
 
     }
   learner_created: true
-- name: blockchain.BlockchainDriver@32dafffc
-  visible: true
-  learner_created: true
-- name: blockchain.BlockchainDriver@1ac950c1
-  visible: true
-  learner_created: true
-- name: blockchain.BlockchainDriver@280ee8c8
+- name: blockchain.BlockchainDriver@24c47142
   visible: true
   learner_created: true
 feedback_link: https://hyperskill.org/projects/50/stages/273/implement

@@ -1,10 +1,10 @@
 package blockchain.miner;
 
-import blockchain.*;
+import blockchain.Blockchain;
 
 public class MinerFactory {
-    private long runningMinerId;
     private Blockchain blockchain;
+    private long runningMinerId;
 
     public MinerFactory(Blockchain blockchain) {
         this.blockchain = blockchain;

@@ -2,6 +2,7 @@ package blockchain.utils;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.Random;
 
 public class StringUtils {
 
@@ -24,6 +25,17 @@ public class StringUtils {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static String randomAlphaString(int length) {
+        String alpha = "abcdefg hijklmn opqrst uvwxyz ABCDEFG HIJKLMN OPQRST UVWXYZ";
+        Random random = new Random();
+        char randomString[] = new char[length];
+
+        for (int i=0; i<length; i++) {
+            randomString[i] = alpha.charAt(random.nextInt(59));
+        }
+        return new String(randomString);
     }
 
 }
