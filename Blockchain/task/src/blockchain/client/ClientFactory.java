@@ -12,6 +12,6 @@ public class ClientFactory {
     }
 
     public Client newClient() {
-        return Client.of(runningClientId++, blockchain);
+        return Client.with(runningClientId++, blockchain);
     }
 }

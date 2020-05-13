@@ -7,6 +7,8 @@ public class Client implements Runnable {
     private String name;
     private Blockchain blockchain;
     private long id;
+    private static final int MAX_SLEEP_TIME = 50000;
+    private static final int MIN_SLEEP_TIME = 1;
 
     private Client(long id, Blockchain blockchain) {
         this.blockchain = blockchain;
@@ -14,7 +16,7 @@ public class Client implements Runnable {
         name = names[(int) id];
     }
 
-    public static Client of(long id, Blockchain blockchain) {
+    public static Client with(long id, Blockchain blockchain) {
         return new Client(id, blockchain);
     }
 
@@ -22,9 +24,13 @@ public class Client implements Runnable {
     public void run() {
         Random random = new Random();
 
-        while(true) {
+        while (true) {
             try {
-                Thread.sleep(random.nextInt(5000));
+                int sleepTime = random.nextInt(MAX_SLEEP_TIME);
+                while(sleepTime < MIN_SLEEP_TIME) {
+                    sleepTime = random.nextInt(MAX_SLEEP_TIME);
+                }
+                Thread.sleep(sleepTime);
             } catch (InterruptedException e) {
                 return;
             }

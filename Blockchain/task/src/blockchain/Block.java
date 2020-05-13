@@ -2,31 +2,41 @@ package blockchain;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.List;
+
 import blockchain.utils.*;
 
 public class Block implements Serializable, Cloneable {
 
+    // TODO Deal with Messages
+
     private final long id;
     private final long timestamp;
     private String prevBlockHash;
+    private List<Message> messages;
     private String hash;
     private int magicNum;
     private long timeTookMs;
     private long timeTookForMiningMs;
     private long minerId;
 
-    private Block(final long id) {
+    private Block(final long id, final List<Message> messages, final String prevBlockHash) {
         this.id = id;
-        timestamp = new Date().getTime();
+        this.messages = messages;
+        this.prevBlockHash = prevBlockHash;
+        timestamp = System.currentTimeMillis();
     }
 
-    public static Block with(final long id) { return new Block(id); }
+    public static Block with(final long id, final List<Message> messages, final String prevBlockHash) {
+        return new Block(id, messages, prevBlockHash);
+    }
 
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
         str.append(prevBlockHash);
         str.append(id);
+        str.append(messages.toString());
         str.append(timestamp);
         str.append(magicNum);
         return str.toString();
@@ -80,8 +90,6 @@ public class Block implements Serializable, Cloneable {
     public long getTimestamp() { return timestamp; }
 
     public String getPrevBlockHash() { return prevBlockHash; }
-
-    public void setPrevBlockHash(String prevBlockHash) { this.prevBlockHash = prevBlockHash; }
 
     public String getHash() { return hash; }
 

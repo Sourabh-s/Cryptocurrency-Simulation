@@ -7,6 +7,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import blockchain.miner.Miner;
 
 public class Blockchain implements Serializable {
+
+    // TODO Deal with Messages
+
     private long runningBlockId;
     private String runningPrevBlockHash;
     private final ArrayList<Block> chain;

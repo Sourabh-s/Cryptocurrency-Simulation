@@ -651,6 +651,9 @@ files:
 - name: src/blockchain/client/ClientFactory.java
   visible: true
   learner_created: true
+- name: src/blockchain/Message.java
+  visible: true
+  learner_created: true
 feedback_link: https://hyperskill.org/projects/50/stages/274/implement
 status: Failed
 record: 4
