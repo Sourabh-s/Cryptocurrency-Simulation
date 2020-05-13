@@ -1,24 +1,19 @@
 package blockchain;
 
 import java.io.Serializable;
-import java.util.Date;
 import java.util.List;
-
 import blockchain.utils.*;
 
 public class Block implements Serializable, Cloneable {
-
-    // TODO Deal with Messages
-
     private final long id;
     private final long timestamp;
     private String prevBlockHash;
     private List<Message> messages;
     private String hash;
     private int magicNum;
-    private long timeTookMs;
     private long timeTookForMiningMs;
     private long minerId;
+    private String messagesToString;
 
     private Block(final long id, final List<Message> messages, final String prevBlockHash) {
         this.id = id;
@@ -28,7 +23,11 @@ public class Block implements Serializable, Cloneable {
     }
 
     public static Block with(final long id, final List<Message> messages, final String prevBlockHash) {
-        return new Block(id, messages, prevBlockHash);
+        Block block =  new Block(id, messages, prevBlockHash);
+        block.messagesToString = block.messages.stream()
+                                    .map(Message::toString)
+                                    .reduce("", String::concat);
+        return block;
     }
 
     @Override
@@ -36,7 +35,7 @@ public class Block implements Serializable, Cloneable {
         StringBuilder str = new StringBuilder();
         str.append(prevBlockHash);
         str.append(id);
-        str.append(messages.toString());
+        str.append(messagesToString);
         str.append(timestamp);
         str.append(magicNum);
         return str.toString();
@@ -70,19 +69,21 @@ public class Block implements Serializable, Cloneable {
 
         if (minerId != ((Block) obj).minerId) { return false; }
 
-        if (timeTookMs != ((Block) obj).timeTookMs) { return false; }
-
         if (magicNum != ((Block) obj).magicNum) { return false; }
+
+        if (timeTookForMiningMs != ((Block) obj).timeTookForMiningMs) { return false; }
 
         if (!this.prevBlockHash.equals(((Block) obj).prevBlockHash)) { return false; }
 
         if (!this.hash.equals(((Block) obj).hash)) { return false; }
 
+        //TODO - Two equal blocks will have same messages. Incorporate that condition.
+
         return true;
     }
 
     public boolean isConsistent() {
-        return hash.equals(StringUtils.applySha256(this.toString()));
+        return hash.equals(StringUtils.applySha256(toString()));
     }
 
     public long getId() { return id; }
@@ -94,10 +95,6 @@ public class Block implements Serializable, Cloneable {
     public String getHash() { return hash; }
 
     public void setHash(String hash) { this.hash = hash; }
-
-    public long getTimeTookMs() { return timeTookMs; }
-
-    public void setTimeTookMs(long timeTook) { this.timeTookMs = timeTookMs; }
 
     public int getMagicNum() { return magicNum; }
 
@@ -112,4 +109,11 @@ public class Block implements Serializable, Cloneable {
     public long getMinerId() { return minerId; }
 
     public void setMinerId(long minerId) { this.minerId = minerId; }
+
+    public List<Message> getMessages() {
+        //TODO: Implement this getter
+        throw new UnsupportedOperationException();
+    }
+
+    public String getMessagesToString() { return messagesToString; }
 }

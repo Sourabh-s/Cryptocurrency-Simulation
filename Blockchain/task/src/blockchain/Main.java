@@ -43,7 +43,7 @@ public class Main {
         System.out.println("Magic number: " + block.getMagicNum());
         System.out.println("Hash of the previous block: \n" + block.getPrevBlockHash());
         System.out.println("Hash of the block: \n" + block.getHash());
-        System.out.printf("Block was generating for %d seconds\n", block.getTimeTookMs());
+        System.out.printf("Block was generating for %d seconds\n", block.getTimeTookForMiningMs());
         System.out.println(printNValueStatus(block));
     }
 

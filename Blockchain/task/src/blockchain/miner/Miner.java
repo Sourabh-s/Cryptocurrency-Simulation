@@ -10,8 +10,8 @@ public class Miner implements Runnable {
     private Block currentProcessingBlock;
     private Random random;
     private long id;
-    private static final int BLINDREPITITIONS = 100;
-    private static final int SLEEPWHENNOWORKMS = 1000;
+    private static final int BLIND_REPITITIONS = 100;
+    private static final int SLEEP_WHEN_NO_WORK_MS = 1000;
 
     private Miner(Blockchain blockchain, long id) {
         this.blockchain = blockchain;
@@ -31,7 +31,7 @@ public class Miner implements Runnable {
             updateCurrentProcessingBlock();
             if (currentProcessingBlock == null) {
                 try {
-                    Thread.sleep(SLEEPWHENNOWORKMS);
+                    Thread.sleep(SLEEP_WHEN_NO_WORK_MS);
                 } catch (InterruptedException ignored) {
                     return;
                 }
@@ -47,7 +47,7 @@ public class Miner implements Runnable {
 
     private boolean blindMining() {
         String requiredPrefix = blockchain.getRequiredPrefixForHash();
-        for (int i = 0; i < BLINDREPITITIONS; i++) {
+        for (int i = 0; i < BLIND_REPITITIONS; i++) {
             currentProcessingBlock.setMagicNum(random.nextInt());
             String computedHash = StringUtils.applySha256(currentProcessingBlock.toString());
             if (computedHash.startsWith(requiredPrefix)) {

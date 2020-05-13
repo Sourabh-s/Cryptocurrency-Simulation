@@ -34,7 +34,7 @@ public class Client implements Runnable {
             } catch (InterruptedException e) {
                 return;
             }
-            //TODO: send a message to blockchain with client name
+            //TODO: send a new random message to Blockchain. StringUtils::randomAlphaString can be helpful
         }
     }
 
