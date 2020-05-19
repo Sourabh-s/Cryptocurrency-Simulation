@@ -7,16 +7,16 @@ import blockchain.utils.*;
 public class Miner implements Runnable {
 
     private Blockchain blockchain;
-    private Block currentProcessingBlock;
+    private Block currentMiningBlock;
     private Random random;
     private long id;
-    private static final int BLIND_REPITITIONS = 100;
+    private static final int BLIND_REPETITIONS = 100;
     private static final int SLEEP_WHEN_NO_WORK_MS = 1000;
 
     private Miner(Blockchain blockchain, long id) {
         this.blockchain = blockchain;
         this.id = id;
-        currentProcessingBlock = null;
+        currentMiningBlock = null;
         random = null;
     }
 
@@ -28,8 +28,8 @@ public class Miner implements Runnable {
     @Override
     public void run() {
         while (true) {
-            updateCurrentProcessingBlock();
-            if (currentProcessingBlock == null) {
+            updateCurrentMiningBlock();
+            if (currentMiningBlock == null) {
                 try {
                     Thread.sleep(SLEEP_WHEN_NO_WORK_MS);
                 } catch (InterruptedException ignored) {
@@ -39,29 +39,29 @@ public class Miner implements Runnable {
             }
             boolean successful = blindMining();
             if (successful) {
-                currentProcessingBlock.setMinerId(id);
-                blockchain.submitBlock(currentProcessingBlock, this);
+                currentMiningBlock.setMinerId(id);
+                blockchain.submitBlock(currentMiningBlock, this);
             }
         }
     }
 
     private boolean blindMining() {
         String requiredPrefix = blockchain.getRequiredPrefixForHash();
-        for (int i = 0; i < BLIND_REPITITIONS; i++) {
-            currentProcessingBlock.setMagicNum(random.nextInt());
-            String computedHash = StringUtils.applySha256(currentProcessingBlock.toString());
+        for (int i = 0; i < BLIND_REPETITIONS; i++) {
+            currentMiningBlock.setMagicNum(random.nextInt());
+            String computedHash = StringUtils.applySha256(currentMiningBlock.toString());
             if (computedHash.startsWith(requiredPrefix)) {
-                currentProcessingBlock.setHash(computedHash);
+                currentMiningBlock.setHash(computedHash);
                 return true;
             }
         }
         return false;
     }
 
-    private void updateCurrentProcessingBlock() {
+    private void updateCurrentMiningBlock() {
         Block block = blockchain.getUnprocessedBlock();
-        if (currentProcessingBlock == null || !currentProcessingBlock.equals(block)) {
-            currentProcessingBlock = block;
+        if (currentMiningBlock == null || !currentMiningBlock.equals(block)) {
+            currentMiningBlock = block;
             random = new Random();
         }
     }

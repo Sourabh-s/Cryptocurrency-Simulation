@@ -5,12 +5,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.stream.IntStream;
+
 import blockchain.miner.Miner;
 
 public class Blockchain implements Serializable {
     private long runningBlockId;
     private String runningPrevBlockHash;
     private final List<Block> chain;
+    private final Block unprocessedBlocks[];
     private final Queue<Message> messages;
     private BlockchainDriver creator;
 
@@ -22,7 +25,6 @@ public class Blockchain implements Serializable {
     // 15% deviation from fixed time is acceptable
     private static int ACCEPTABLE_DEVIATION_IN_MINING_TIME_MS = (int) ((FIXED_MINING_TIME_MS * 15) / 100);
 
-    private Block currentMiningBlock;
     private long currentMiningBlockStartTimeMs;
     private long currentMiningBlockEndTimeMs;
 
@@ -30,9 +32,8 @@ public class Blockchain implements Serializable {
         runningBlockId = 1;
         runningPrevBlockHash = "0";
         chain = new LinkedList<>();
-        messages = new ConcurrentLinkedQueue<Message>();
-        //TODO: Create the first block
-
+        unprocessedBlocks = new Block[1];
+        messages = new ConcurrentLinkedQueue<>();
         noOfStartZerosForHash = 0;
         requiredPrefixForHash = "";
     }
@@ -41,29 +42,67 @@ public class Blockchain implements Serializable {
         if(!(caller instanceof BlockchainDriver)) throw new IllegalCallerException();
         Blockchain blockchain = new Blockchain();
         blockchain.creator = (BlockchainDriver) caller;
+
+        //TODO: Create the first block
         return blockchain;
     }
 
     public void addMessage(Message message) {
-        if (currentMiningBlock == null) {
-
+        messages.add(message);
+        synchronized (unprocessedBlocks) {
+            if (unprocessedBlocks[0] == null) {
+                unprocessedBlocks[0] = createBlock();
+                currentMiningBlockStartTimeMs = System.currentTimeMillis();
+            }
         }
     }
 
-    private void addBlock() {
-        Block block = Block.with(runningBlockId);
-        if(runningPrevBlockHash != null) {
-            block.setPrevBlockHash(runningPrevBlockHash);
-            runningPrevBlockHash = null;
+    private Block createBlock() {
+        List<Message> messages = List.of();
+        IntStream.of(this.messages.size())
+                .forEach(i -> messages.add(this.messages.remove()));
+
+        Block block = Block.with(runningBlockId++, messages, runningPrevBlockHash);
+        runningPrevBlockHash = null;
+        return block;
+    }
+
+    public synchronized boolean submitBlock(Block block, Object caller) {
+        if (!(caller instanceof Miner)) {
+            throw new IllegalCallerException();
         }
 
-        if(unprocessedBlocks.isEmpty()) {
-            currentMiningBlock = block;
-            currentMiningBlockStartTimeMs = System.currentTimeMillis();
+        currentMiningBlockEndTimeMs = System.currentTimeMillis();
+
+        if (!areIdenticalBlocks(unprocessedBlocks[0], block)) { return false; }
+        if (!block.getHash().startsWith(requiredPrefixForHash)) { return false; }
+        if (!block.isConsistent()) { return false; }
+
+        block.setTimeTookForMiningMs(currentMiningBlockEndTimeMs - currentMiningBlockStartTimeMs);
+        chain.add(block);
+
+        updateMiningConstraints();
+        runningPrevBlockHash = block.getHash();
+
+        synchronized (unprocessedBlocks) {
+            if (messages.isEmpty()) {
+                unprocessedBlocks[0] = null;
+            } else {
+                unprocessedBlocks[0] = createBlock();
+                currentMiningBlockStartTimeMs = System.currentTimeMillis();
+            }
         }
-        unprocessedBlocks.add(block);
-        runningBlockId++;
+
         creator.saveBlockchain();
+        return true;
+    }
+
+    public Block getUnprocessedBlock() {
+        try {
+            return (Block) unprocessedBlocks[0].clone();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public boolean isValid() {
@@ -81,41 +120,6 @@ public class Blockchain implements Serializable {
         }
 
         return true;
-    }
-
-    public synchronized boolean submitBlock(Block block, Object caller) {
-        if (!(caller instanceof Miner)) {
-            throw new IllegalCallerException();
-        }
-
-        currentMiningBlockEndTimeMs = System.currentTimeMillis();
-
-        if (!areIdenticalBlocks(currentMiningBlock, block)) { return false; }
-        if (!block.getHash().startsWith(requiredPrefixForHash)) { return false; }
-        if (!block.isConsistent()) { return false; }
-
-        block.setTimeTookForMiningMs(currentMiningBlockEndTimeMs - currentMiningBlockStartTimeMs);
-        chain.add(block);
-        unprocessedBlocks.poll();
-        updateMiningConstraints();
-
-        runningPrevBlockHash = block.getHash();
-
-        Block nextUnprocessedBlock = unprocessedBlocks.peek();
-        if (nextUnprocessedBlock != null) {
-            nextUnprocessedBlock.setPrevBlockHash(runningPrevBlockHash);
-            runningPrevBlockHash = null;
-        }
-        currentMiningBlock = nextUnprocessedBlock;
-
-        creator.saveBlockchain();
-        currentMiningBlockStartTimeMs = System.currentTimeMillis();
-        return true;
-    }
-
-    public Block getUnprocessedBlock() {
-        if(currentMiningBlock == null) return null;
-        return (Block) currentMiningBlock.clone();
     }
 
     public long getLength() { return chain.size(); }
