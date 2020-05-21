@@ -2,6 +2,9 @@ package blockchain;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Random;
+
+
 import blockchain.utils.*;
 
 public class Block implements Serializable, Cloneable {
@@ -14,7 +17,6 @@ public class Block implements Serializable, Cloneable {
     private long timeTookForMiningMs;
     private long minerId;
     private String messagesToString;
-
     private Block(final long id, final List<Message> messages, final String prevBlockHash) {
         this.id = id;
         this.messages = messages;
@@ -27,6 +29,8 @@ public class Block implements Serializable, Cloneable {
         block.messagesToString = block.messages.stream()
                                     .map(Message::toString)
                                     .reduce("", String::concat);
+        block.hash = StringUtils.applySha256(block.toString());
+
         return block;
     }
 
@@ -79,6 +83,7 @@ public class Block implements Serializable, Cloneable {
 
         //TODO - Two equal blocks will have same messages. Incorporate that condition.
 
+        if (this.getMessagesToString().equals(((Block) obj).getPrevBlockHash())){ return false;}
         return true;
     }
 
@@ -111,8 +116,14 @@ public class Block implements Serializable, Cloneable {
     public void setMinerId(long minerId) { this.minerId = minerId; }
 
     public List<Message> getMessages() {
-        //TODO: Implement this getter
-        throw new UnsupportedOperationException();
+
+        try{
+            return this.messages;
+        }
+        catch (Exception e){
+            throw new UnsupportedOperationException();
+        }
+
     }
 
     public String getMessagesToString() { return messagesToString; }
