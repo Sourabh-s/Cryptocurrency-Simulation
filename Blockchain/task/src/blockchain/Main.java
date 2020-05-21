@@ -1,9 +1,11 @@
 package blockchain;
 
 import blockchain.client.ClientFactory;
+import blockchain.miner.Miner;
+import blockchain.Message;
 import blockchain.miner.MinerFactory;
 import java.util.concurrent.Executors;
-
+import  java.util.List;
 public class Main {
 
     public static void main(String[] args) throws Exception {
@@ -15,20 +17,24 @@ public class Main {
         var executor = Executors.newFixedThreadPool(20);
         for (int i = 0; i < 10; i++) {
             executor.submit(minerFactory.newMiner());
+
         }
         for (int i = 0; i < 10; i++) {
             executor.submit(clientFactory.newClient());
         }
 
         for (int i = 0; i < 5; i++) {
+
             while (blockchain.getLength() < i+1) {
-                // Wait if the block is not mined yet
+
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException ignore) {
 
                 }
             }
+
+
             printBlock(blockchain.getBlock(i));
             System.out.print(i < 4 ? "\n" : "");
         }
@@ -74,7 +80,15 @@ public class Main {
             return "no messages";
         } else {
             //TODO: Form a string with all messages in the required format and return
-            return null;
+
+            StringBuilder str = new StringBuilder();
+            List list = block.getMessages();
+
+            for(int i = 0 ; i < list.size() ; i++){
+                str.append(list.get(i));
+                str.append("\n");
+            }
+            return str.toString();
         }
     }
 }
