@@ -1,15 +1,14 @@
 package blockchain;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.IntStream;
 
 import blockchain.miner.Miner;
-import blockchain.utils.StringUtils;
 
 public class Blockchain implements Serializable {
     private long runningBlockId;
@@ -45,57 +44,43 @@ public class Blockchain implements Serializable {
         Blockchain blockchain = new Blockchain();
         blockchain.creator = (BlockchainDriver) caller;
 
-        //TODO: Create the first block
-        Block block = blockchain.createBlock();
-        blockchain.unprocessedBlocks[0] = block;
-
-
+        blockchain.unprocessedBlocks[0] = blockchain.createBlock();
+        blockchain.currentMiningBlockStartTimeMs = System.currentTimeMillis();
         return blockchain;
     }
 
     public void addMessage(Message message) {
         messages.add(message);
-
         synchronized (unprocessedBlocks) {
             if (unprocessedBlocks[0] == null) {
                 unprocessedBlocks[0] = createBlock();
                 currentMiningBlockStartTimeMs = System.currentTimeMillis();
             }
         }
-
     }
 
     private Block createBlock() {
-
-
-        List<Message> messagesOfBlock = List.of();
-        try{
-            IntStream.of(this.messages.size())
-                    .forEach(i -> messagesOfBlock.add(this.messages.remove()));
-
-
-        }
-        catch (Exception e){
-
+        List<Message> messages = new LinkedList<>();
+        for (int i = 0; i < this.messages.size(); i++) {
+            messages.add(this.messages.remove());
         }
 
-        Block block = Block.with(runningBlockId++, messagesOfBlock, runningPrevBlockHash);
+        Block block = Block.with(runningBlockId++, messages, runningPrevBlockHash);
         runningPrevBlockHash = null;
         return block;
     }
 
-    public synchronized boolean submitBlock(Block block,Object caller) {
+    public synchronized boolean submitBlock(Block block, Object caller) {
         if (!(caller instanceof Miner)) {
-
             throw new IllegalCallerException();
         }
-
-        currentMiningBlockEndTimeMs = System.currentTimeMillis();
 
         if (!areIdenticalBlocks(unprocessedBlocks[0], block)) { return false; }
         if (!block.getHash().startsWith(requiredPrefixForHash)) { return false; }
         if (!block.isConsistent()) { return false; }
-        block.setMagicNum(new Random().nextInt());
+
+        currentMiningBlockEndTimeMs = System.currentTimeMillis();
+
         block.setTimeTookForMiningMs(currentMiningBlockEndTimeMs - currentMiningBlockStartTimeMs);
         chain.add(block);
 
@@ -153,13 +138,12 @@ public class Blockchain implements Serializable {
     private static boolean areIdenticalBlocks(Block b1, Block b2) {
         if (b1 == b2) { return true; }
 
-        if (b1.getClass() != b2.getClass()) { return false; }
+        if (!b1.getClass().equals(b2.getClass())) { return false; }
         if (b1.getId() != b2.getId()) { return false; }
         if (b1.getTimestamp() != b2.getTimestamp()) { return false; }
         if (!b1.getPrevBlockHash().equals(b2.getPrevBlockHash())) { return false; }
-        //TODO: The blockchain requires that two blocks contain same messages to be identical
+        if (!b1.getMessagesToStringCached().equals(b2.getMessagesToStringCached())) { return false; }
 
-        if(!b1.getMessagesToString().equals(b2.getMessagesToString())){ return false;}
         return true;
     }
 

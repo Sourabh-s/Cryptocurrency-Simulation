@@ -2,9 +2,6 @@ package blockchain;
 
 import java.io.Serializable;
 import java.util.List;
-import java.util.Random;
-
-
 import blockchain.utils.*;
 
 public class Block implements Serializable, Cloneable {
@@ -16,7 +13,8 @@ public class Block implements Serializable, Cloneable {
     private int magicNum;
     private long timeTookForMiningMs;
     private long minerId;
-    private String messagesToString;
+    private String messagesToStringCached;
+
     private Block(final long id, final List<Message> messages, final String prevBlockHash) {
         this.id = id;
         this.messages = messages;
@@ -26,11 +24,9 @@ public class Block implements Serializable, Cloneable {
 
     public static Block with(final long id, final List<Message> messages, final String prevBlockHash) {
         Block block =  new Block(id, messages, prevBlockHash);
-        block.messagesToString = block.messages.stream()
+        block.messagesToStringCached = block.messages.stream()
                                     .map(Message::toString)
                                     .reduce("", String::concat);
-        block.hash = StringUtils.applySha256(block.toString());
-
         return block;
     }
 
@@ -39,7 +35,7 @@ public class Block implements Serializable, Cloneable {
         StringBuilder str = new StringBuilder();
         str.append(prevBlockHash);
         str.append(id);
-        str.append(messagesToString);
+        str.append(messagesToStringCached);
         str.append(timestamp);
         str.append(magicNum);
         return str.toString();
@@ -81,9 +77,8 @@ public class Block implements Serializable, Cloneable {
 
         if (!this.hash.equals(((Block) obj).hash)) { return false; }
 
-        //TODO - Two equal blocks will have same messages. Incorporate that condition.
+        if (!this.messagesToStringCached.equals(((Block) obj).messagesToStringCached)) { return false; }
 
-        if (this.getMessagesToString().equals(((Block) obj).getPrevBlockHash())){ return false;}
         return true;
     }
 
@@ -115,16 +110,7 @@ public class Block implements Serializable, Cloneable {
 
     public void setMinerId(long minerId) { this.minerId = minerId; }
 
-    public List<Message> getMessages() {
+    public List<Message> getMessages() { return messages; }
 
-        try{
-            return this.messages;
-        }
-        catch (Exception e){
-            throw new UnsupportedOperationException();
-        }
-
-    }
-
-    public String getMessagesToString() { return messagesToString; }
+    public String getMessagesToStringCached() { return messagesToStringCached; }
 }

@@ -1,11 +1,9 @@
 package blockchain;
 
 import blockchain.client.ClientFactory;
-import blockchain.miner.Miner;
-import blockchain.Message;
 import blockchain.miner.MinerFactory;
 import java.util.concurrent.Executors;
-import  java.util.List;
+
 public class Main {
 
     public static void main(String[] args) throws Exception {
@@ -17,24 +15,20 @@ public class Main {
         var executor = Executors.newFixedThreadPool(20);
         for (int i = 0; i < 10; i++) {
             executor.submit(minerFactory.newMiner());
-
         }
         for (int i = 0; i < 10; i++) {
             executor.submit(clientFactory.newClient());
         }
 
         for (int i = 0; i < 5; i++) {
-
             while (blockchain.getLength() < i+1) {
-
+                // Wait if the block is not mined yet
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException ignore) {
 
                 }
             }
-
-
             printBlock(blockchain.getBlock(i));
             System.out.print(i < 4 ? "\n" : "");
         }
@@ -51,7 +45,7 @@ public class Main {
         System.out.println("Hash of the previous block: \n" + block.getPrevBlockHash());
         System.out.println("Hash of the block: \n" + block.getHash());
         System.out.println("Block data: " + extractMessages(block));
-        System.out.printf("Block was generating for %d seconds\n", block.getTimeTookForMiningMs());
+        System.out.printf("Block was generating for %d seconds\n", block.getTimeTookForMiningMs()/1000);
         System.out.println(nValueStatus(block));
     }
 
@@ -79,14 +73,9 @@ public class Main {
         if (block.getMessages().isEmpty()) {
             return "no messages";
         } else {
-            //TODO: Form a string with all messages in the required format and return
-
-            StringBuilder str = new StringBuilder();
-            List list = block.getMessages();
-
-            for(int i = 0 ; i < list.size() ; i++){
-                str.append(list.get(i));
-                str.append("\n");
+            StringBuilder str = new StringBuilder("");
+            for (var message : block.getMessages()) {
+                str.append("\n" + message.getAuthor() + ": " + message.getMessage());
             }
             return str.toString();
         }
