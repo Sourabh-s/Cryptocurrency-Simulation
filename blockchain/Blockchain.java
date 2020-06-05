@@ -136,6 +136,7 @@ public class Blockchain implements Serializable {
     public static int getAcceptableDeviationInMiningTimeMs() { return ACCEPTABLE_DEVIATION_IN_MINING_TIME_MS; }
 
     private static boolean areIdenticalBlocks(Block b1, Block b2) {
+        if (b1 == null || b2 == null) { return false; }
         if (b1 == b2) { return true; }
 
         if (!b1.getClass().equals(b2.getClass())) { return false; }
