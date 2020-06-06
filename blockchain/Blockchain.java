@@ -1,14 +1,18 @@
 package blockchain;
 
 import java.io.Serializable;
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.stream.IntStream;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Stream;
 
 import blockchain.miner.Miner;
+import blockchain.utils.SignatureUtils;
+
+import static blockchain.utils.SignatureUtils.verifySignature;
 
 public class Blockchain implements Serializable {
     private long runningBlockId;
@@ -29,6 +33,9 @@ public class Blockchain implements Serializable {
     private long currentMiningBlockStartTimeMs;
     private long currentMiningBlockEndTimeMs;
 
+    private AtomicLong messageIdCounter;
+    private Long largestMessageIdTillPrevBlock;
+
     private Blockchain() {
         runningBlockId = 1;
         runningPrevBlockHash = "0";
@@ -37,6 +44,8 @@ public class Blockchain implements Serializable {
         messages = new ConcurrentLinkedQueue<>();
         noOfStartZerosForHash = 0;
         requiredPrefixForHash = "";
+        messageIdCounter.set(1);
+        largestMessageIdTillPrevBlock = 0l;
     }
 
     public static Blockchain generateBlockchain(Object caller) {
@@ -49,7 +58,8 @@ public class Blockchain implements Serializable {
         return blockchain;
     }
 
-    public void addMessage(Message message) {
+    public boolean addMessage(Message message) {
+        if (!validMessage(message)) { return false; }
         messages.add(message);
         synchronized (unprocessedBlocks) {
             if (unprocessedBlocks[0] == null) {
@@ -57,6 +67,7 @@ public class Blockchain implements Serializable {
                 currentMiningBlockStartTimeMs = System.currentTimeMillis();
             }
         }
+        return true;
     }
 
     private Block createBlock() {
@@ -135,6 +146,10 @@ public class Blockchain implements Serializable {
 
     public static int getAcceptableDeviationInMiningTimeMs() { return ACCEPTABLE_DEVIATION_IN_MINING_TIME_MS; }
 
+    public long getMessageId() {
+        return messageIdCounter.getAndIncrement();
+    }
+
     private static boolean areIdenticalBlocks(Block b1, Block b2) {
         if (b1 == null || b2 == null) { return false; }
         if (b1 == b2) { return true; }
@@ -145,6 +160,12 @@ public class Blockchain implements Serializable {
         if (!b1.getPrevBlockHash().equals(b2.getPrevBlockHash())) { return false; }
         if (!b1.getMessagesToStringCached().equals(b2.getMessagesToStringCached())) { return false; }
 
+        return true;
+    }
+
+    private boolean validMessage(Message message) {
+        if (message.getId() < largestMessageIdTillPrevBlock) { return false; }
+        if (!verifySignature(message.toString(), message.getSignature(), message.getPublicKey())) { return false; }
         return true;
     }
 
