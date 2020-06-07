@@ -1,17 +1,14 @@
 package blockchain;
 
 import java.io.Serializable;
-import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Stream;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import blockchain.miner.Miner;
-import blockchain.utils.SignatureUtils;
-
 import static blockchain.utils.SignatureUtils.verifySignature;
 
 public class Blockchain implements Serializable {
@@ -28,13 +25,14 @@ public class Blockchain implements Serializable {
     private static final int BLOCK_CREATION_FREQUENCY_PER_MINUTE = 3;
     private static int FIXED_MINING_TIME_MS = (int) ((60 * 1e3) / BLOCK_CREATION_FREQUENCY_PER_MINUTE);
     // 15% deviation from fixed time is acceptable
-    private static int ACCEPTABLE_DEVIATION_IN_MINING_TIME_MS = (int) ((FIXED_MINING_TIME_MS * 15) / 100);
+    private static int ACCEPTABLE_DEVIATION_IN_MINING_TIME_MS = ((FIXED_MINING_TIME_MS * 15) / 100);
 
     private long currentMiningBlockStartTimeMs;
     private long currentMiningBlockEndTimeMs;
 
     private AtomicLong messageIdCounter;
-    private Long largestMessageIdTillPrevBlock;
+    private long largestMessageIdTillPrevBlock;
+    private ReentrantReadWriteLock largestMessageIdTillPrevBlockLock = new ReentrantReadWriteLock();
 
     private Blockchain() {
         runningBlockId = 1;
@@ -45,7 +43,7 @@ public class Blockchain implements Serializable {
         noOfStartZerosForHash = 0;
         requiredPrefixForHash = "";
         messageIdCounter.set(1);
-        largestMessageIdTillPrevBlock = 0l;
+        largestMessageIdTillPrevBlock = 0L;
     }
 
     public static Blockchain generateBlockchain(Object caller) {
@@ -59,8 +57,11 @@ public class Blockchain implements Serializable {
     }
 
     public boolean addMessage(Message message) {
-        if (!validMessage(message)) { return false; }
+        largestMessageIdTillPrevBlockLock.readLock().lock();
+        if (!validateMessage(message)) { return false; }
         messages.add(message);
+        largestMessageIdTillPrevBlockLock.readLock().unlock();
+
         synchronized (unprocessedBlocks) {
             if (unprocessedBlocks[0] == null) {
                 unprocessedBlocks[0] = createBlock();
@@ -71,6 +72,11 @@ public class Blockchain implements Serializable {
     }
 
     private Block createBlock() {
+        largestMessageIdTillPrevBlockLock.writeLock().lock();
+        largestMessageIdTillPrevBlock = messages.stream()
+                                        .map(Message::getId)
+                                        .max(Long::compare).get();
+
         List<Message> messages = new LinkedList<>();
         for (int i = 0; i < this.messages.size(); i++) {
             messages.add(this.messages.remove());
@@ -78,6 +84,7 @@ public class Blockchain implements Serializable {
 
         Block block = Block.with(runningBlockId++, messages, runningPrevBlockHash);
         runningPrevBlockHash = null;
+        largestMessageIdTillPrevBlockLock.writeLock().unlock();
         return block;
     }
 
@@ -163,7 +170,7 @@ public class Blockchain implements Serializable {
         return true;
     }
 
-    private boolean validMessage(Message message) {
+    private boolean validateMessage(Message message) {
         if (message.getId() < largestMessageIdTillPrevBlock) { return false; }
         if (!verifySignature(message.toString(), message.getSignature(), message.getPublicKey())) { return false; }
         return true;
