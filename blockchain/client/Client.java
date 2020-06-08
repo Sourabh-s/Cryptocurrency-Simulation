@@ -21,7 +21,7 @@ public class Client implements Runnable {
         this.blockchain = blockchain;
         this.id = id;
         name = names[(int) id];
-        while (keyPair != null) {
+        while (keyPair == null) {
             keyPair = SignatureUtils.generateKeyPair();
         }
     }
@@ -52,7 +52,7 @@ public class Client implements Runnable {
     private Message createMessage() {
         String messageData = StringUtils.randomAlphaString(new Random().nextInt(200));
         long messageId = blockchain.getMessageId();
-        Message message = new Message(id, name, messageData, keyPair.getPublic());
+        Message message = new Message(messageId, name, messageData, keyPair.getPublic());
         String signature = SignatureUtils.generateSignature(message.toString(), keyPair.getPrivate());
         message.setSignature(signature);
         return message;

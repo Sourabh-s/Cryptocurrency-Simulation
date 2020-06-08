@@ -30,7 +30,7 @@ public class Blockchain implements Serializable {
     private long currentMiningBlockStartTimeMs;
     private long currentMiningBlockEndTimeMs;
 
-    private AtomicLong messageIdCounter;
+    private AtomicLong messageIdCounter = new AtomicLong();
     private long largestMessageIdTillPrevBlock;
     private ReentrantReadWriteLock largestMessageIdTillPrevBlockLock = new ReentrantReadWriteLock();
 
@@ -75,7 +75,7 @@ public class Blockchain implements Serializable {
         largestMessageIdTillPrevBlockLock.writeLock().lock();
         largestMessageIdTillPrevBlock = messages.stream()
                                         .map(Message::getId)
-                                        .max(Long::compare).get();
+                                        .max(Long::compare).orElse(0L);
 
         List<Message> messages = new LinkedList<>();
         for (int i = 0; i < this.messages.size(); i++) {
