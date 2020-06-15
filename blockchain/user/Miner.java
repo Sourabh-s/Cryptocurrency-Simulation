@@ -1,33 +1,43 @@
-package blockchain.miner;
+package blockchain.user;
 
 import java.util.Random;
 import blockchain.*;
 import blockchain.utils.*;
 
-public class Miner implements Runnable {
+public class Miner extends User implements Runnable {
 
-    private Blockchain blockchain;
     private Block currentMiningBlock;
-    private Random random;
-    private long id;
     private static final int BLIND_REPETITIONS = 100;
     private static final int SLEEP_WHEN_NO_WORK_MS = 1000;
 
-    private Miner(Blockchain blockchain, long id) {
-        this.blockchain = blockchain;
-        this.id = id;
+    private Miner(long id, Blockchain blockchain) {
+        super(id, blockchain);
         currentMiningBlock = null;
         random = null;
     }
 
-
-    static Miner of(Blockchain blockchain, long id) {
-        return new Miner(blockchain, id);
+    static Miner with(long id, Blockchain blockchain) {
+        return new Miner(id, blockchain);
     }
 
     @Override
     public void run() {
         while (true) {
+            random = new Random();
+            int randNum = random.nextInt();
+            if (randNum % id == 0) {
+                doTransaction();
+            }
+            else {
+                doMinning();
+            }
+        } 
+    }
+
+    private void doMinning() {
+        boolean successful = false;
+        
+        while (!successful) {
             updateCurrentMiningBlock();
             if (currentMiningBlock == null) {
                 try {
@@ -37,7 +47,7 @@ public class Miner implements Runnable {
                 }
                 continue;
             }
-            boolean successful = blindMining();
+            successful = blindMining();
             if (successful) {
                 currentMiningBlock.setMinerId(id);
                 blockchain.submitBlock(currentMiningBlock, this);

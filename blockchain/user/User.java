@@ -1,4 +1,4 @@
-package blockchain.client;
+package blockchain.user;
 
 import blockchain.Blockchain;
 import blockchain.Message;
@@ -9,15 +9,17 @@ import java.security.KeyPair;
 import java.security.PublicKey;
 import java.util.Random;
 
-public class Client implements Runnable {
-    private String name;
-    private Blockchain blockchain;
-    private long id;
-    private KeyPair keyPair = null;
-    private static final int MAX_SLEEP_TIME = 5000;
-    private static final int MIN_SLEEP_TIME = 1;
+public class User implements Runnable {
+    protected String name;
+    protected Blockchain blockchain;
+    protected long id;
+    protected KeyPair keyPair = null;
+    protected Random random = null;
+    protected static final int MAX_SLEEP_TIME = 5000;
+    protected static final int MIN_SLEEP_TIME = 1;
 
-    private Client(long id, Blockchain blockchain) {
+
+    protected User(long id, Blockchain blockchain) {
         this.blockchain = blockchain;
         this.id = id;
         name = names[(int) id];
@@ -26,8 +28,8 @@ public class Client implements Runnable {
         }
     }
 
-    public static Client with(long id, Blockchain blockchain) {
-        return new Client(id, blockchain);
+    public static User with(long id, Blockchain blockchain) {
+        return new User(id, blockchain);
     }
 
     @Override
@@ -44,25 +46,25 @@ public class Client implements Runnable {
             } catch (InterruptedException e) {
                 return;
             }
-
-            blockchain.addMessage(createMessage());
+            // doTransaction and add transaction
         }
     }
 
-    private Message createMessage() {
-        String messageData = StringUtils.randomAlphaString(new Random().nextInt(200));
-        long messageId = blockchain.getMessageId();
-        Message message = new Message(messageId, name, messageData, keyPair.getPublic());
-        String signature = SignatureUtils.generateSignature(message.toString(), keyPair.getPrivate());
-        message.setSignature(signature);
-        return message;
+    protected void doTransaction() {
+        random = new Random();
+        User to = UserFactory.getUser(random.nextLong(UserFactory.getNoOfUsers()) + 1);
+        int amount = random.nextInt(100) + 1;
+        long transactionId = blockchain.getTransactionId();
+        Transaction transaction = new Transaction(transactionId, this, to, amount, keyPair.getPublic());
+        String signature = SignatureUtils.generateSignature(transaction.toString(), keyPair.getPrivate());
+        transaction.setSignature(signature);
     }
 
     public PublicKey getPublicKey() {
         return keyPair.getPublic();
     }
 
-    private static String[] names = {
+    protected static String[] names = {
         "James", "Mary", "John", "Linda", "Robert", "Michael", "Sarah", "William",
         "David", "Richard", "Lisa", "Joseph", "Thomas", "Jessica", "Charles", "Nancy",
         "Christopher", "Jennifer"
