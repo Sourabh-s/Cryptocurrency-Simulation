@@ -1,27 +1,42 @@
 package blockchain.user;
 
 import blockchain.Blockchain;
+import java.util.ArrayList;
 
 public class UserFactory {
-    private Blockchain blockchain;
-    private long runningUserId;
-    private ArrayList<User> users = new ArrayList<User>(); 
+    private static Blockchain blockchain;
+    private static long runningUserId;
+    private static ArrayList<User> users;
+    private static UserFactory thisObj = null;
 
-    public UserFactory(Blockchain blockchain) {
-        this.blockchain = blockchain;
+    private UserFactory(Blockchain blockchain) {
+        UserFactory.blockchain = blockchain;
         runningUserId = 1;
+        users = new ArrayList<>();
+    }
+
+    public UserFactory with(Blockchain blockchain) {
+        if (thisObj == null) {
+            thisObj = new UserFactory(blockchain);
+            return thisObj;
+        }
+        return thisObj;
     }
 
     public User newUser() {
-    	return users[runningUserId] = User.with(runningUserId++, blockchain);
+    	User user = User.with(runningUserId++, blockchain);
+    	users.add(user);
+    	return user;
     }
 
     public Miner newMiner() {
-    	return users[runningUserId] = Miner.with(runningUserId++, blockchain);
+    	Miner miner = Miner.with(runningUserId++, blockchain);
+    	users.add(miner);
+    	return miner;
     }
 
     public static User getUser(long id) {
-    	return users.get(id);
+    	return users.get((int) id-1);
     }
 
     public static long getNoOfUsers() {
