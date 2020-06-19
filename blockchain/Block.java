@@ -8,24 +8,25 @@ public class Block implements Serializable, Cloneable {
     private final long id;
     private final long timestamp;
     private String prevBlockHash;
-    private List<Message> messages;
+    private List<Transaction> transactions;
     private String hash;
     private int magicNum;
     private long timeTookForMiningMs;
     private long minerId;
-    private String messagesToStringCached;
+    private int mineReward;
+    private String transactionsToStringCached;
 
-    private Block(final long id, final List<Message> messages, final String prevBlockHash) {
+    private Block(final long id, final List<Transaction> transactions, final String prevBlockHash) {
         this.id = id;
-        this.messages = messages;
+        this.transactions = transactions;
         this.prevBlockHash = prevBlockHash;
         timestamp = System.currentTimeMillis();
     }
 
-    public static Block with(final long id, final List<Message> messages, final String prevBlockHash) {
-        Block block =  new Block(id, messages, prevBlockHash);
-        block.messagesToStringCached = block.messages.stream()
-                                    .map(Message::toString)
+    public static Block with(final long id, final List<Transaction> transactions, final String prevBlockHash) {
+        Block block =  new Block(id, transactions, prevBlockHash);
+        block.transactionsToStringCached = block.transactions.stream()
+                                    .map(Transaction::toString)
                                     .reduce("", String::concat);
         return block;
     }
@@ -35,9 +36,11 @@ public class Block implements Serializable, Cloneable {
         StringBuilder str = new StringBuilder();
         str.append(prevBlockHash);
         str.append(id);
-        str.append(messagesToStringCached);
+        str.append(transactionsToStringCached);
         str.append(timestamp);
         str.append(magicNum);
+        str.append(minerId);
+        str.append(mineReward);
         return str.toString();
     }
 
@@ -69,6 +72,8 @@ public class Block implements Serializable, Cloneable {
 
         if (minerId != ((Block) obj).minerId) { return false; }
 
+        if (mineReward != ((Block) obj).mineReward) { return false; }
+
         if (magicNum != ((Block) obj).magicNum) { return false; }
 
         if (timeTookForMiningMs != ((Block) obj).timeTookForMiningMs) { return false; }
@@ -77,7 +82,7 @@ public class Block implements Serializable, Cloneable {
 
         if (!this.hash.equals(((Block) obj).hash)) { return false; }
 
-        if (!this.messagesToStringCached.equals(((Block) obj).messagesToStringCached)) { return false; }
+        if (!this.transactionsToStringCached.equals(((Block) obj).transactionsToStringCached)) { return false; }
 
         return true;
     }
@@ -110,7 +115,11 @@ public class Block implements Serializable, Cloneable {
 
     public void setMinerId(long minerId) { this.minerId = minerId; }
 
-    public List<Message> getMessages() { return messages; }
+    public List<Transaction> getTransactions() { return transactions; }
 
-    public String getMessagesToStringCached() { return messagesToStringCached; }
+    public String getTransactionsToStringCached() { return transactionsToStringCached; }
+
+    public int getMineReward() { return mineReward; }
+
+    public void setMineReward(int mineReward) { this.mineReward = mineReward; }
 }
