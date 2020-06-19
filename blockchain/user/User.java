@@ -1,9 +1,8 @@
 package blockchain.user;
 
 import blockchain.Blockchain;
-import blockchain.Message;
+import blockchain.Transaction;
 import blockchain.utils.SignatureUtils;
-import blockchain.utils.StringUtils;
 
 import java.security.KeyPair;
 import java.security.PublicKey;
@@ -14,15 +13,15 @@ public class User implements Runnable {
     protected Blockchain blockchain;
     protected long id;
     protected KeyPair keyPair = null;
-    protected Random random = null;
+    protected Random transRandom = null;
     protected static final int MAX_SLEEP_TIME = 5000;
     protected static final int MIN_SLEEP_TIME = 1;
-
 
     protected User(long id, Blockchain blockchain) {
         this.blockchain = blockchain;
         this.id = id;
         name = names[(int) id];
+        transRandom = new Random();
         while (keyPair == null) {
             keyPair = SignatureUtils.generateKeyPair();
         }
@@ -46,18 +45,20 @@ public class User implements Runnable {
             } catch (InterruptedException e) {
                 return;
             }
-            // doTransaction and add transaction
+            doTransaction();
         }
     }
 
-    protected void doTransaction() {
-        random = new Random();
-        User to = UserFactory.getUser(random.nextLong(UserFactory.getNoOfUsers()) + 1);
-        int amount = random.nextInt(100) + 1;
+    protected boolean doTransaction() {
+        User to = UserFactory.getUser(transRandom.nextInt((int) UserFactory.getNoOfUsers()) + 1);
+        int amount = transRandom.nextInt(100) + 1;
         long transactionId = blockchain.getTransactionId();
+
         Transaction transaction = new Transaction(transactionId, this, to, amount, keyPair.getPublic());
         String signature = SignatureUtils.generateSignature(transaction.toString(), keyPair.getPrivate());
         transaction.setSignature(signature);
+
+        return blockchain.addTransaction(transaction);
     }
 
     public PublicKey getPublicKey() {
