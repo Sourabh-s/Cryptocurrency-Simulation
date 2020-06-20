@@ -32,6 +32,8 @@ public class Transaction {
 
     public User getTo() { return to; }
 
+    public int getAmount() { return amount; }
+
     public long getCreationTime() { return creationTime; }
 
     public String getSignature() { return signature; }

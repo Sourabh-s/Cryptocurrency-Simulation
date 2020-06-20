@@ -65,6 +65,8 @@ public class User implements Runnable {
         return keyPair.getPublic();
     }
 
+    public String getName() { return name; }
+
     protected static String[] names = {
         "James", "Mary", "John", "Linda", "Robert", "Michael", "Sarah", "William",
         "David", "Richard", "Lisa", "Joseph", "Thomas", "Jessica", "Charles", "Nancy",

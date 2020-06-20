@@ -1,7 +1,7 @@
 package blockchain;
 
-import blockchain.client.ClientFactory;
-import blockchain.miner.MinerFactory;
+import blockchain.user.UserFactory;
+
 import java.util.concurrent.Executors;
 
 public class Main {
@@ -9,20 +9,18 @@ public class Main {
     public static void main(String[] args) throws Exception {
         var driver = BlockchainDriver.newDriver();
         var blockchain = driver.getBlockchain();
-        var minerFactory = new MinerFactory(blockchain);
-        var clientFactory = new ClientFactory(blockchain);
+        var userFactory = UserFactory.with(blockchain);
 
         var executor = Executors.newFixedThreadPool(20);
         for (int i = 0; i < 10; i++) {
-            executor.submit(minerFactory.newMiner());
+            executor.submit(userFactory.newUser());
         }
         for (int i = 0; i < 10; i++) {
-            executor.submit(clientFactory.newClient());
+            executor.submit(userFactory.newMiner());
         }
 
         for (int i = 0; i < 5; i++) {
             while (blockchain.getLength() < i+1) {
-                // Wait if the block is not mined yet
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException ignore) {
@@ -38,13 +36,14 @@ public class Main {
 
     private static void printBlock(Block block) {
         System.out.println("Block:");
-        System.out.println("Created by miner # " + block.getMinerId());
+        System.out.println("Created by: " + block.getMiner().getName());
+        System.out.println(block.getMiner().getName() + " gets " + block.getMineReward() + " VC");
         System.out.println("Id: " + block.getId());
         System.out.println("Timestamp: " + block.getTimestamp());
         System.out.println("Magic number: " + block.getMagicNum());
         System.out.println("Hash of the previous block: \n" + block.getPrevBlockHash());
         System.out.println("Hash of the block: \n" + block.getHash());
-        System.out.println("Block data: " + extractMessages(block));
+        System.out.println("Block data: " + extractTransactions(block));
         System.out.printf("Block was generating for %d seconds\n", block.getTimeTookForMiningMs()/1000);
         System.out.println(nValueStatus(block));
     }
@@ -69,14 +68,16 @@ public class Main {
         return "N was decreased by 1";
     }
 
-    private static String extractMessages(Block block) {
-        if (block.getMessages().isEmpty()) {
-            return "no messages";
+    private static String extractTransactions(Block block) {
+        if (block.getTransactions().isEmpty()) {
+            return "\nNo transactions";
         } else {
             StringBuilder str = new StringBuilder("");
-            for (var message : block.getMessages()) {
-                str.append("\n" + message.getAuthor() + ": " + message.getMessage());
-            }
+            block.getTransactions().stream().forEach(transaction -> {
+                str.append( "\n" + transaction.getFrom().getName() +
+                        " sent " + transaction.getAmount() +
+                        " VC to " + transaction.getTo().getName());
+            });
             return str.toString();
         }
     }

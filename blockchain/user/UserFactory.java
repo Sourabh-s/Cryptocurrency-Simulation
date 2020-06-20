@@ -15,7 +15,7 @@ public class UserFactory {
         users = new ArrayList<>();
     }
 
-    public UserFactory with(Blockchain blockchain) {
+    public static UserFactory with(Blockchain blockchain) {
         if (thisObj == null) {
             thisObj = new UserFactory(blockchain);
             return thisObj;

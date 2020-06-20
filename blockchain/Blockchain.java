@@ -1,5 +1,7 @@
 package blockchain;
 
+import blockchain.user.Miner;
+
 import java.io.Serializable;
 import java.util.LinkedList;
 import java.util.List;
@@ -8,7 +10,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import blockchain.miner.Miner;
 import static blockchain.utils.SignatureUtils.verifySignature;
 
 public class Blockchain implements Serializable {
@@ -16,7 +17,7 @@ public class Blockchain implements Serializable {
     private String runningPrevBlockHash;
     private final List<Block> chain;
     private final Block unprocessedBlocks[];
-    private final Queue<Message> messages;
+    private final Queue<Transaction> transactions;
     private BlockchainDriver creator;
 
     private int noOfStartZerosForHash;
@@ -30,7 +31,7 @@ public class Blockchain implements Serializable {
     private long currentMiningBlockStartTimeMs;
     private long currentMiningBlockEndTimeMs;
 
-    private AtomicLong messageIdCounter = new AtomicLong();
+    private AtomicLong transactionIdCounter = new AtomicLong();
     private long largestMessageIdTillPrevBlock;
     private ReentrantReadWriteLock largestMessageIdTillPrevBlockLock = new ReentrantReadWriteLock();
 
@@ -39,10 +40,10 @@ public class Blockchain implements Serializable {
         runningPrevBlockHash = "0";
         chain = new LinkedList<>();
         unprocessedBlocks = new Block[1];
-        messages = new ConcurrentLinkedQueue<>();
+        transactions = new ConcurrentLinkedQueue<>();
         noOfStartZerosForHash = 0;
         requiredPrefixForHash = "";
-        messageIdCounter.set(1);
+        transactionIdCounter.set(1);
         largestMessageIdTillPrevBlock = 0L;
     }
 
@@ -56,10 +57,10 @@ public class Blockchain implements Serializable {
         return blockchain;
     }
 
-    public boolean addMessage(Message message) {
+    public boolean addTransaction(Transaction transaction) {
         largestMessageIdTillPrevBlockLock.readLock().lock();
-        if (!validateMessage(message)) { return false; }
-        messages.add(message);
+        if (!validateMessage(transaction)) { return false; }
+        transactions.add(transaction);
         largestMessageIdTillPrevBlockLock.readLock().unlock();
 
         synchronized (unprocessedBlocks) {
@@ -73,13 +74,13 @@ public class Blockchain implements Serializable {
 
     private Block createBlock() {
         largestMessageIdTillPrevBlockLock.writeLock().lock();
-        largestMessageIdTillPrevBlock = messages.stream()
-                                        .map(Message::getId)
+        largestMessageIdTillPrevBlock = transactions.stream()
+                                        .map(Transaction::getId)
                                         .max(Long::compare).orElse(0L);
 
-        List<Message> messages = new LinkedList<>();
-        for (int i = 0; i < this.messages.size(); i++) {
-            messages.add(this.messages.remove());
+        List<Transaction> messages = new LinkedList<>();
+        for (int i = 0; i < this.transactions.size(); i++) {
+            messages.add(this.transactions.remove());
         }
 
         Block block = Block.with(runningBlockId++, messages, runningPrevBlockHash);
@@ -106,7 +107,7 @@ public class Blockchain implements Serializable {
         runningPrevBlockHash = block.getHash();
 
         synchronized (unprocessedBlocks) {
-            if (messages.isEmpty()) {
+            if (transactions.isEmpty()) {
                 unprocessedBlocks[0] = null;
             } else {
                 unprocessedBlocks[0] = createBlock();
@@ -153,8 +154,8 @@ public class Blockchain implements Serializable {
 
     public static int getAcceptableDeviationInMiningTimeMs() { return ACCEPTABLE_DEVIATION_IN_MINING_TIME_MS; }
 
-    public long getMessageId() {
-        return messageIdCounter.getAndIncrement();
+    public long getTransactionId() {
+        return transactionIdCounter.getAndIncrement();
     }
 
     private static boolean areIdenticalBlocks(Block b1, Block b2) {
@@ -165,14 +166,14 @@ public class Blockchain implements Serializable {
         if (b1.getId() != b2.getId()) { return false; }
         if (b1.getTimestamp() != b2.getTimestamp()) { return false; }
         if (!b1.getPrevBlockHash().equals(b2.getPrevBlockHash())) { return false; }
-        if (!b1.getMessagesToStringCached().equals(b2.getMessagesToStringCached())) { return false; }
+        if (!b1.getTransactionsToStringCached().equals(b2.getTransactionsToStringCached())) { return false; }
 
         return true;
     }
 
-    private boolean validateMessage(Message message) {
-        if (message.getId() < largestMessageIdTillPrevBlock) { return false; }
-        if (!verifySignature(message.toString(), message.getSignature(), message.getPublicKey())) { return false; }
+    private boolean validateMessage(Transaction transaction) {
+        if (transaction.getId() < largestMessageIdTillPrevBlock) { return false; }
+        if (!verifySignature(transaction.toString(), transaction.getSignature(), transaction.getPublicKey())) { return false; }
         return true;
     }
 

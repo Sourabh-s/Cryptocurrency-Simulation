@@ -36,7 +36,7 @@ public class Miner extends User implements Runnable {
 
     private void doMining() {
         boolean successful = false;
-        
+
         while (!successful) {
             updateCurrentMiningBlock();
             if (currentMiningBlock == null) {
@@ -74,7 +74,7 @@ public class Miner extends User implements Runnable {
             mineRandom = new Random();
 
             if (currentMiningBlock != null) {
-                currentMiningBlock.setMinerId(id);
+                currentMiningBlock.setMiner(id);
             }
         }
     }

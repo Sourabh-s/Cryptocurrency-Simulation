@@ -2,6 +2,8 @@ package blockchain;
 
 import java.io.Serializable;
 import java.util.List;
+
+import blockchain.user.Miner;
 import blockchain.utils.*;
 
 public class Block implements Serializable, Cloneable {
@@ -12,7 +14,7 @@ public class Block implements Serializable, Cloneable {
     private String hash;
     private int magicNum;
     private long timeTookForMiningMs;
-    private long minerId;
+    private Miner miner;
     private int mineReward;
     private String transactionsToStringCached;
 
@@ -39,7 +41,7 @@ public class Block implements Serializable, Cloneable {
         str.append(transactionsToStringCached);
         str.append(timestamp);
         str.append(magicNum);
-        str.append(minerId);
+        str.append(miner);
         str.append(mineReward);
         return str.toString();
     }
@@ -70,7 +72,7 @@ public class Block implements Serializable, Cloneable {
 
         if (this.timestamp != ((Block) obj).timestamp) { return false; }
 
-        if (minerId != ((Block) obj).minerId) { return false; }
+        if (miner != ((Block) obj).miner) { return false; }
 
         if (mineReward != ((Block) obj).mineReward) { return false; }
 
@@ -111,9 +113,9 @@ public class Block implements Serializable, Cloneable {
         this.timeTookForMiningMs = timeTookForMiningMs;
     }
 
-    public long getMinerId() { return minerId; }
+    public Miner getMiner() { return miner; }
 
-    public void setMinerId(long minerId) { this.minerId = minerId; }
+    public void setMiner(Miner miner) { this.miner = miner; }
 
     public List<Transaction> getTransactions() { return transactions; }
 
