@@ -74,7 +74,7 @@ public class Miner extends User implements Runnable {
             mineRandom = new Random();
 
             if (currentMiningBlock != null) {
-                currentMiningBlock.setMiner(id);
+                currentMiningBlock.setMiner(this);
             }
         }
     }

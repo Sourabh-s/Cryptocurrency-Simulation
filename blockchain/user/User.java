@@ -13,7 +13,7 @@ public class User implements Runnable {
     protected Blockchain blockchain;
     protected long id;
     protected KeyPair keyPair = null;
-    protected Random transRandom = null;
+    protected Random transRandom;
     protected static final int MAX_SLEEP_TIME = 5000;
     protected static final int MIN_SLEEP_TIME = 1;
 
@@ -50,7 +50,7 @@ public class User implements Runnable {
     }
 
     protected boolean doTransaction() {
-        User to = UserFactory.getUser(transRandom.nextInt((int) UserFactory.getNoOfUsers()) + 1);
+        User to = UserFactory.getUser(transRandom.nextInt((int) UserFactory.getNoOfUsers() + 1));
         int amount = transRandom.nextInt(100) + 1;
         long transactionId = blockchain.getTransactionId();
 
@@ -68,8 +68,8 @@ public class User implements Runnable {
     public String getName() { return name; }
 
     protected static String[] names = {
-        "James", "Mary", "John", "Linda", "Robert", "Michael", "Sarah", "William",
-        "David", "Richard", "Lisa", "Joseph", "Thomas", "Jessica", "Charles", "Nancy",
-        "Christopher", "Jennifer"
+        "James", "Mary", "John", "Linda", "Robert", "Michael", "Sarah", "William", "Laya",
+        "David", "Richard", "Lisa", "Joseph", "Thomas", "Jessica", "Charles", "Nancy", "Jyothi",
+        "Karthik", "Christopher", "Jennifer", "Keerthi"
     };
 }

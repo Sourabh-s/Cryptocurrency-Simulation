@@ -25,11 +25,12 @@ public class Block implements Serializable, Cloneable {
         timestamp = System.currentTimeMillis();
     }
 
-    public static Block with(final long id, final List<Transaction> transactions, final String prevBlockHash) {
+    public static Block with(final long id, final List<Transaction> transactions, final String prevBlockHash, final int mineReward) {
         Block block =  new Block(id, transactions, prevBlockHash);
         block.transactionsToStringCached = block.transactions.stream()
                                     .map(Transaction::toString)
                                     .reduce("", String::concat);
+        block.mineReward = mineReward;
         return block;
     }
 

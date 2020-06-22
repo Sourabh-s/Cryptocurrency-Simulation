@@ -6,7 +6,7 @@ import java.util.concurrent.Executors;
 
 public class Main {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         var driver = BlockchainDriver.newDriver();
         var blockchain = driver.getBlockchain();
         var userFactory = UserFactory.with(blockchain);
@@ -19,7 +19,7 @@ public class Main {
             executor.submit(userFactory.newMiner());
         }
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 15; i++) {
             while (blockchain.getLength() < i+1) {
                 try {
                     Thread.sleep(1000);
@@ -28,7 +28,7 @@ public class Main {
                 }
             }
             printBlock(blockchain.getBlock(i));
-            System.out.print(i < 4 ? "\n" : "");
+            System.out.print(i < 14 ? "\n" : "");
         }
 
         executor.shutdownNow();
@@ -72,12 +72,15 @@ public class Main {
         if (block.getTransactions().isEmpty()) {
             return "\nNo transactions";
         } else {
-            StringBuilder str = new StringBuilder("");
-            block.getTransactions().stream().forEach(transaction -> {
-                str.append( "\n" + transaction.getFrom().getName() +
-                        " sent " + transaction.getAmount() +
-                        " VC to " + transaction.getTo().getName());
-            });
+            StringBuilder str = new StringBuilder();
+            block.getTransactions().forEach(
+                    transaction -> str.append("\n")
+                    .append(transaction.getFrom().getName())
+                    .append(" sent ")
+                    .append(transaction.getAmount())
+                    .append(" VC to ")
+                    .append(transaction.getTo().getName())
+            );
             return str.toString();
         }
     }
