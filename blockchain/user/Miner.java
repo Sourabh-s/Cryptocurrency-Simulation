@@ -10,7 +10,7 @@ public class Miner extends User implements Runnable {
     private static final int BLIND_REPETITIONS = 100;
     private static final int SLEEP_WHEN_NO_WORK_MS = 1000;
     private Random mineRandom;
-    private Random selectRandom;
+    private final Random selectRandom;
 
     private Miner(long id, Blockchain blockchain) {
         super(id, blockchain);
@@ -29,22 +29,22 @@ public class Miner extends User implements Runnable {
                 doTransaction();
             }
             else {
-                doMining();
+                try {
+                    doMining();
+                } catch (InterruptedException e) {
+                    return;
+                }
             }
         } 
     }
 
-    private void doMining() {
+    private void doMining() throws InterruptedException {
         boolean successful = false;
 
         while (!successful) {
             updateCurrentMiningBlock();
             if (currentMiningBlock == null) {
-                try {
-                    Thread.sleep(SLEEP_WHEN_NO_WORK_MS);
-                } catch (InterruptedException ignored) {
-                    return;
-                }
+                Thread.sleep(SLEEP_WHEN_NO_WORK_MS);
                 continue;
             }
             successful = blindMining();

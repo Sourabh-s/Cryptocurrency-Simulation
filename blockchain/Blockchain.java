@@ -2,6 +2,9 @@ package blockchain;
 
 import blockchain.user.Miner;
 import blockchain.user.User;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
 import static blockchain.utils.SignatureUtils.verifySignature;
 
 import java.io.Serializable;
@@ -42,16 +45,19 @@ public class Blockchain implements Serializable {
         }
     }
 
+    private final List<Block> chain;
+    private final UnprocessedBlock unprocessedBlock;
+    private final Queue<Transaction> transactionQueue;
+
+    private BlockchainDriver creator;
+
     private long runningBlockId;
     private String runningPrevBlockHash;
-    private final List<Block> chain;
-    private final Queue<Transaction> transactionQueue;
-    private BlockchainDriver creator;
-    private final UnprocessedBlock unprocessedBlock;
+
     private int noOfStartZerosForHash;
     private String requiredPrefixForHash;
 
-    private static final int BLOCK_CREATION_FREQUENCY_PER_MINUTE = 3;
+    private static final int BLOCK_CREATION_FREQUENCY_PER_MINUTE = 100;
     private static final int FIXED_MINING_TIME_MS = (int) ((60 * 1e3) / BLOCK_CREATION_FREQUENCY_PER_MINUTE);
     // 15% deviation from fixed time is acceptable
     private static final int ACCEPTABLE_DEVIATION_IN_MINING_TIME_MS = ((FIXED_MINING_TIME_MS * 15) / 100);
@@ -59,8 +65,8 @@ public class Blockchain implements Serializable {
     private long currentMiningBlockStartTimeMs;
     private long currentMiningBlockEndTimeMs;
 
-    private final AtomicLong transactionIdCounter = new AtomicLong();
-    private long largestTransactionIdTillPrevBlock;
+    private final AtomicLong transactionIdCounter = new AtomicLong(1);
+    private long largestTransactionIdTillPrevBlock = 0L;
     private final ReentrantReadWriteLock largestTransactionIdTillPrevBlockLock = new ReentrantReadWriteLock();
 
     private static final int mineReward = 100;
@@ -74,10 +80,10 @@ public class Blockchain implements Serializable {
         transactionQueue = new ConcurrentLinkedQueue<>();
         noOfStartZerosForHash = 0;
         requiredPrefixForHash = "";
-        transactionIdCounter.set(1);
-        largestTransactionIdTillPrevBlock = 0L;
     }
 
+    @NotNull
+    @Contract("null -> fail")
     public static Blockchain generateBlockchain(Object caller) {
         if(!(caller instanceof BlockchainDriver)) throw new IllegalCallerException();
         Blockchain blockchain = new Blockchain();
@@ -89,10 +95,8 @@ public class Blockchain implements Serializable {
     }
 
     public boolean addTransaction(Transaction transaction) {
-        largestTransactionIdTillPrevBlockLock.readLock().lock();
         if (!validateTransaction(transaction)) { return false; }
         transactionQueue.add(transaction);
-        largestTransactionIdTillPrevBlockLock.readLock().unlock();
 
         unprocessedBlock.getWriteLock().lock();
         if (unprocessedBlock.getBlock() == null) {
@@ -103,11 +107,12 @@ public class Blockchain implements Serializable {
         return true;
     }
 
+    @NotNull
     private Block createBlock() {
         largestTransactionIdTillPrevBlockLock.writeLock().lock();
         largestTransactionIdTillPrevBlock = transactionQueue.stream()
-                .map(Transaction::getId)
-                .max(Long::compare).orElse(0L);
+                                                .map(Transaction::getId)
+                                                .max(Long::compare).orElse(0L);
 
         List<Transaction> transactions = new LinkedList<>();
         for (int i = 0; i < transactionQueue.size(); i++) {
@@ -136,14 +141,15 @@ public class Blockchain implements Serializable {
         unprocessedBlock.getWriteLock().lock();
 
         chain.add(block);
+        updateMiningConstraints();
+        runningPrevBlockHash = block.getHash();
+
         if (transactionQueue.isEmpty()) {
             unprocessedBlock.setBlock(null);
         } else {
             unprocessedBlock.setBlock(createBlock());
             currentMiningBlockStartTimeMs = System.currentTimeMillis();
         }
-        updateMiningConstraints();
-        runningPrevBlockHash = block.getHash();
 
         unprocessedBlock.getWriteLock().unlock();
 
@@ -203,8 +209,11 @@ public class Blockchain implements Serializable {
         return true;
     }
 
-    private boolean validateTransaction(Transaction transaction) {
+    private boolean validateTransaction(@NotNull Transaction transaction) {
+        largestTransactionIdTillPrevBlockLock.readLock().lock();
         if (transaction.getId() < largestTransactionIdTillPrevBlock) { return false; }
+        largestTransactionIdTillPrevBlockLock.readLock().unlock();
+        
         if (transaction.getFrom() == transaction.getTo()) { return false; }
         if (!transaction.getFrom().getPublicKey().equals(transaction.getPublicKey())) { return false; }
         if (!verifySignature(transaction.toString(), transaction.getSignature(), transaction.getPublicKey())) { return false; }
@@ -259,13 +268,16 @@ public class Blockchain implements Serializable {
         return balance.get();
     }
 
-    private void processBlockForBalance(User user, AtomicInteger currBalance, Block block) {
+    private void processBlockForBalance(User user, AtomicInteger currBalance, @NotNull Block block) {
+        if (user == block.getMiner()) {
+            currBalance.set(currBalance.get() + block.getMineReward());
+        }
         block.getTransactions().forEach(
                 transaction -> processTransactionForBalance(user, currBalance, transaction)
         );
     }
 
-    private void processTransactionForBalance(User user, AtomicInteger currBalance, Transaction transaction) {
+    private void processTransactionForBalance(User user, AtomicInteger currBalance, @NotNull Transaction transaction) {
         if (transaction.getFrom() == user) {
             currBalance.set(currBalance.get() - transaction.getAmount());
         } else if (transaction.getTo() == user) {

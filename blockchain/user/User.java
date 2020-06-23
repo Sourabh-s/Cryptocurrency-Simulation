@@ -51,7 +51,7 @@ public class User implements Runnable {
 
     protected boolean doTransaction() {
         User to = UserFactory.getUser(transRandom.nextInt((int) UserFactory.getNoOfUsers() + 1));
-        int amount = transRandom.nextInt(100) + 1;
+        int amount = transRandom.nextInt(100 + 1);
         long transactionId = blockchain.getTransactionId();
 
         Transaction transaction = new Transaction(transactionId, this, to, amount, keyPair.getPublic());

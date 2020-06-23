@@ -64,6 +64,9 @@ public class Main {
             return "N was increased to " + ++nValue;
         }
 
+        if (nValue == 0) {
+            return "N stays the same";
+        }
         nValue--;
         return "N was decreased by 1";
     }
